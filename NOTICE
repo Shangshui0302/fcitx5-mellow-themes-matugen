@@ -1,0 +1,10 @@
+fcitx5-matugen-theme is derived from Mellow WeChat and Mellow WeChat dark in:
+
+  fcitx5-mellow-themes
+  Copyright (c) 2024, sanweiya
+  https://github.com/sanweiya/fcitx5-mellow-themes
+  Source revision: a66028fe22daa81df20e7aac1575918347b60a40
+
+The original panel geometry, margins and SVG assets are retained under the
+BSD 2-Clause License. This project adds Matugen templates, dynamic Material You
+accent mappings, Nix packaging, documentation and integration examples.
