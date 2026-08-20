@@ -35,7 +35,7 @@
 
             meta = {
               description = "Mellow-shaped Fcitx5 themes with Matugen runtime accent colors";
-              homepage = "https://github.com/Shangshui0302/fcitx5-matugen-theme";
+              homepage = "https://github.com/Shangshui0302/fcitx5-mellow-themes-matugen";
               license = pkgs.lib.licenses.bsd2;
               platforms = pkgs.lib.platforms.linux;
             };

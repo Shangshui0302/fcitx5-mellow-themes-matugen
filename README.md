@@ -1,4 +1,4 @@
-# fcitx5-matugen-theme
+# fcitx5-mellow-themes-matugen
 
 [English](README_EN.md) | **简体中文**
 
@@ -43,7 +43,7 @@ Fcitx5 的图片型高亮不会被普通颜色字段覆盖，因此本项目同�
 直接安装到用户 profile：
 
 ```bash
-nix profile install github:Shangshui0302/fcitx5-matugen-theme
+nix profile install github:Shangshui0302/fcitx5-mellow-themes-matugen
 ```
 
 作为 flake input 接入 Home Manager：
@@ -51,7 +51,7 @@ nix profile install github:Shangshui0302/fcitx5-matugen-theme
 ```nix
 # flake.nix
 inputs.fcitx5-matugen-theme = {
-  url = "github:Shangshui0302/fcitx5-matugen-theme";
+  url = "github:Shangshui0302/fcitx5-mellow-themes-matugen";
   inputs.nixpkgs.follows = "nixpkgs";
 };
 
@@ -70,8 +70,8 @@ home.packages = [
 ### 通用 Linux
 
 ```bash
-git clone https://github.com/Shangshui0302/fcitx5-matugen-theme
-cd fcitx5-matugen-theme
+git clone https://github.com/Shangshui0302/fcitx5-mellow-themes-matugen
+cd fcitx5-mellow-themes-matugen
 
 install -d ~/.local/share/fcitx5/themes ~/.config/matugen/templates/fcitx5-matugen-theme
 cp -r themes/mellow-matugen themes/mellow-matugen-dark ~/.local/share/fcitx5/themes/

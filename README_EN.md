@@ -1,4 +1,4 @@
-# fcitx5-matugen-theme
+# fcitx5-mellow-themes-matugen
 
 **English** | [简体中文](README.md)
 
@@ -39,14 +39,14 @@ The complete file matters because fcitx5-gtk loads the first `theme.conf` found 
 ### Nix flake
 
 ```bash
-nix profile install github:Shangshui0302/fcitx5-matugen-theme
+nix profile install github:Shangshui0302/fcitx5-mellow-themes-matugen
 ```
 
 As a Home Manager flake input:
 
 ```nix
 inputs.fcitx5-matugen-theme = {
-  url = "github:Shangshui0302/fcitx5-matugen-theme";
+  url = "github:Shangshui0302/fcitx5-mellow-themes-matugen";
   inputs.nixpkgs.follows = "nixpkgs";
 };
 
@@ -64,8 +64,8 @@ The package installs themes under `share/fcitx5/themes/` and templates under:
 ### Generic Linux
 
 ```bash
-git clone https://github.com/Shangshui0302/fcitx5-matugen-theme
-cd fcitx5-matugen-theme
+git clone https://github.com/Shangshui0302/fcitx5-mellow-themes-matugen
+cd fcitx5-mellow-themes-matugen
 
 install -d ~/.local/share/fcitx5/themes ~/.config/matugen/templates/fcitx5-matugen-theme
 cp -r themes/mellow-matugen themes/mellow-matugen-dark ~/.local/share/fcitx5/themes/
