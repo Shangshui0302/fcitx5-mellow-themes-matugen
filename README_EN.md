@@ -5,9 +5,11 @@
 [![License: BSD-2-Clause](https://img.shields.io/badge/License-BSD--2--Clause-blue.svg)](LICENSE)
 [![Nix Flake](https://img.shields.io/badge/Nix-flake-5277C3.svg)](flake.nix)
 
+See [CHANGELOG.md](CHANGELOG.md) for the release history.
+
 Matugen-powered accent themes for Fcitx5 ClassicUI. The project keeps the rounded Mellow WeChat candidate window from [fcitx5-mellow-themes](https://github.com/sanweiya/fcitx5-mellow-themes), while deriving its highlight background and text colors from a Material You wallpaper palette.
 
-Both light and dark variants are complete themes and work with ordinary ClassicUI candidate windows as well as GTK-embedded candidate windows rendered by fcitx5-gtk. Native Wayland candidate windows request compositor-rendered blur when available and still work as normal themes when it is not.
+Both light and dark variants are complete themes and work with ordinary ClassicUI candidate windows as well as GTK-embedded candidate windows rendered by fcitx5-gtk. Native blur is verified on Hyprland; niri, KWin and GNOME/Mutter are currently protocol-level theoretical support only. Issues and pull requests are welcome.
 
 ## Preview
 
@@ -25,7 +27,7 @@ Four wallpapers are shown in both light and dark modes, for eight Matugen palett
 - Complete `mellow-matugen` and `mellow-matugen-dark` themes.
 - Matugen `primary` for the rounded highlight and `on_primary` for highlighted text.
 - Original Mellow WeChat panel geometry, shadows and spacing.
-- Compositor-native background blur using the upstream rounded `panel.svg` and `blur-mask.svg`.
+- Compositor-native background blur, verified on Hyprland; support status for other compositors is documented below.
 - Nix flake and distribution-independent manual installation.
 - No dependency on Darkman, Waypaper or a particular desktop shell.
 
@@ -138,6 +140,8 @@ programs.fcitx5-matugen = {
 };
 ```
 
+See [`examples/home-manager.nix`](examples/home-manager.nix) for a minimal module example.
+
 The module installs the selected package and links the selected Matugen templates under:
 
 ```text
@@ -193,7 +197,7 @@ Work in this order:
    UseDarkTheme=True
    Vertical Candidate List=True
 6. Back up existing configuration before editing and do not delete other themes. On NixOS, only edit Nix files in the configuration repository, show the diff, and let the user run rebuild/switch themselves.
-7. Run Matugen once after configuration, restart or reload Fcitx5, and verify native Wayland ClassicUI and GTK-embedded candidates separately: check compositor blur for the former, and rounded layout, image highlight, generated accent color and vertical arrangement for the latter.
+7. Run Matugen once after configuration, restart or reload Fcitx5, and verify the native Wayland ClassicUI and GTK-embedded candidates on the current compositor. Hyprland is verified by this project; niri, KWin and GNOME/Mutter are theoretical support only and must not be reported as tested.
 8. Report the installation method, files written, mode-switch command, wallpaper-switch command, verification result, and any command the user must run manually.
 ```
 
@@ -249,7 +253,7 @@ A Darkman hook typically renders Matugen, updates the current `Theme`, and resta
 
 ### Enabling compositor-native blur
 
-The themes set `EnableBlur=True`, which asks Fcitx5 to request Wayland background blur. Use Fcitx5 5.1.20 or newer; older versions still load the theme but cannot request native blur from niri.
+The themes set `EnableBlur=True`, which asks Fcitx5 to request Wayland background blur. Use Fcitx5 5.1.20 or newer; older versions still load the theme but cannot request compositor-native blur.
 
 Hyprland must enable input-method blur under `decoration:blur`:
 
@@ -263,7 +267,7 @@ decoration {
 }
 ```
 
-niri only needs global blur enabled; do not try to match Fcitx5 with an ordinary `popups` rule:
+In theory, niri only needs global blur enabled; it is not tested by this project. Do not try to match Fcitx5 with an ordinary `popups` rule:
 
 ```kdl
 blur {
@@ -274,13 +278,15 @@ blur {
 }
 ```
 
-KWin needs its desktop Blur effect enabled. GNOME/Mutter provides compositor-native blur only in versions that support `ext-background-effect`; unsupported versions gracefully fall back to the regular theme.
+In theory, KWin needs its desktop Blur effect enabled. GNOME/Mutter provides compositor-native blur only in versions that support `ext-background-effect`; neither is tested by this project, and unsupported versions gracefully fall back to the regular theme.
+
+Verification status: native blur is verified on Hyprland in this project. niri, KWin and GNOME/Mutter have not been tested here and are protocol-level theoretical support only. If you validate one of them, please open an issue or pull request with the Fcitx5/compositor versions and screenshots.
 
 ## Compatibility and limitations
 
 - Requires Fcitx5 ClassicUI and Matugen.
 - Your existing tooling remains responsible for mode state, wallpaper selection and reloads.
-- Wayland-native blur depends on compositor support; Hyprland needs `input_methods=true`, and niri needs global `blur` enabled.
+- Wayland-native blur depends on compositor support; Hyprland needs `input_methods=true` and is verified here. niri, KWin and GNOME/Mutter are currently untested theoretical support only.
 - `fcitx5-gtk` GTK3/GTK4 candidate windows keep the theme colors and layout, but compositor backdrop blur is not guaranteed.
 - GNOME Kimpanel, KDE Input Method Panel and similar external panels draw their own candidate window and do not use ClassicUI themes.
 - Flatpak GTK applications must be able to read the user theme directory or host profile; sandbox permissions are outside this project.

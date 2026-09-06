@@ -13,6 +13,7 @@
         let
           pkgs = nixpkgs.legacyPackages.${system};
           lib = pkgs.lib;
+          themeVersion = "0.2.0";
           mkThemePackage =
             {
               name,
@@ -25,7 +26,7 @@
                   "fcitx5-matugen-theme"
                 else
                   "fcitx5-matugen-theme-${name}";
-              version = "0.1.0";
+              version = themeVersion;
               src = ./.;
 
               installPhase = ''
@@ -116,8 +117,99 @@
         fcitx5-matugen = import ./home-manager.nix { inherit self; };
       };
 
-      checks = forAllSystems (system: {
-        package = self.packages.${system}.default;
-      });
+      checks = forAllSystems (system:
+        let
+          pkgs = nixpkgs.legacyPackages.${system};
+          lib = pkgs.lib;
+          packages = self.packages.${system};
+          allThemes = [ "mellow-matugen" "mellow-matugen-dark" ];
+          variants = [
+            {
+              name = "both-blur";
+              package = packages."both-blur";
+              themes = allThemes;
+              blur = true;
+            }
+            {
+              name = "light-blur";
+              package = packages."light-blur";
+              themes = [ "mellow-matugen" ];
+              blur = true;
+            }
+            {
+              name = "dark-blur";
+              package = packages."dark-blur";
+              themes = [ "mellow-matugen-dark" ];
+              blur = true;
+            }
+            {
+              name = "both-solid";
+              package = packages."both-solid";
+              themes = allThemes;
+              blur = false;
+            }
+            {
+              name = "light-solid";
+              package = packages."light-solid";
+              themes = [ "mellow-matugen" ];
+              blur = false;
+            }
+            {
+              name = "dark-solid";
+              package = packages."dark-solid";
+              themes = [ "mellow-matugen-dark" ];
+              blur = false;
+            }
+          ];
+          renderVariantChecks = variant:
+            let
+              selectedThemes = lib.concatMapStringsSep "\n" (theme: ''
+                test -f "${variant.package}/share/fcitx5/themes/${theme}/theme.conf"
+                test -f "${variant.package}/share/fcitx5/themes/${theme}/panel.svg"
+                test -f "${variant.package}/share/fcitx5/themes/${theme}/highlight.svg"
+                test -f "${variant.package}/share/matugen/fcitx5-matugen-theme/${theme}/theme.conf.tpl"
+                test -f "${variant.package}/share/matugen/fcitx5-matugen-theme/${theme}/highlight.svg.tpl"
+              '') variant.themes;
+              unselectedThemes = lib.concatMapStringsSep "\n" (theme: ''
+                test ! -e "${variant.package}/share/fcitx5/themes/${theme}"
+                test ! -e "${variant.package}/share/matugen/fcitx5-matugen-theme/${theme}"
+              '') (lib.filter (theme: !(builtins.elem theme variant.themes)) allThemes);
+              styleChecks =
+                if variant.blur then
+                  lib.concatMapStringsSep "\n" (theme: ''
+                    grep -q '^EnableBlur=True$' "${variant.package}/share/fcitx5/themes/${theme}/theme.conf"
+                    grep -q '^BlurMask=blur-mask.svg$' "${variant.package}/share/fcitx5/themes/${theme}/theme.conf"
+                    grep -q 'fill-opacity:0.25' "${variant.package}/share/fcitx5/themes/${theme}/panel.svg"
+                    grep -q '^EnableBlur=True$' "${variant.package}/share/matugen/fcitx5-matugen-theme/${theme}/theme.conf.tpl"
+                    grep -q '^BlurMask=blur-mask.svg$' "${variant.package}/share/matugen/fcitx5-matugen-theme/${theme}/theme.conf.tpl"
+                    test -f "${variant.package}/share/fcitx5/themes/${theme}/blur-mask.svg"
+                  '') variant.themes
+                else
+                  lib.concatMapStringsSep "\n" (theme: ''
+                    grep -q '^EnableBlur=False$' "${variant.package}/share/fcitx5/themes/${theme}/theme.conf"
+                    grep -q '^BlurMask=$' "${variant.package}/share/fcitx5/themes/${theme}/theme.conf"
+                    grep -q 'fill-opacity:1' "${variant.package}/share/fcitx5/themes/${theme}/panel.svg"
+                    grep -q '^EnableBlur=False$' "${variant.package}/share/matugen/fcitx5-matugen-theme/${theme}/theme.conf.tpl"
+                    grep -q '^BlurMask=$' "${variant.package}/share/matugen/fcitx5-matugen-theme/${theme}/theme.conf.tpl"
+                    test ! -e "${variant.package}/share/fcitx5/themes/${theme}/blur-mask.svg"
+                  '') variant.themes;
+            in
+            ''
+              # ${variant.name}
+              ${selectedThemes}
+              ${unselectedThemes}
+              ${styleChecks}
+            '';
+        in
+        {
+          package = packages.default;
+          variants = pkgs.runCommand "fcitx5-matugen-theme-variants-check" {
+            nativeBuildInputs = [ pkgs.coreutils pkgs.gnugrep ];
+          } ''
+            set -euo pipefail
+            ${lib.concatMapStringsSep "\n" renderVariantChecks variants}
+            touch "$out"
+          '';
+        });
     };
 }

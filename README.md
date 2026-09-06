@@ -5,11 +5,13 @@
 [![License: BSD-2-Clause](https://img.shields.io/badge/License-BSD--2--Clause-blue.svg)](LICENSE)
 [![Nix Flake](https://img.shields.io/badge/Nix-flake-5277C3.svg)](flake.nix)
 
+变更记录见 [CHANGELOG.md](CHANGELOG.md)。
+
 为 Fcitx5 ClassicUI 制作的 Matugen 动态重点色主题。它保留
 [fcitx5-mellow-themes](https://github.com/sanweiya/fcitx5-mellow-themes)
 中 Mellow WeChat 的圆角候选窗，同时让高亮背景和文字随壁纸生成的 Material You 配色变化。
 
-项目提供浅色与深色两套完整主题，适用于普通 ClassicUI 候选窗以及 fcitx5-gtk 绘制的 GTK 内嵌候选窗。原生 Wayland 候选窗会在 compositor 支持时请求其原生模糊；不支持时仍正常显示主题。
+项目提供浅色与深色两套完整主题，适用于普通 ClassicUI 候选窗以及 fcitx5-gtk 绘制的 GTK 内嵌候选窗。Hyprland 原生模糊已实测；niri、KWin、GNOME/Mutter 目前只保留协议层面的理论支持，欢迎提交 issue 或 PR。
 
 ## 效果展示
 
@@ -27,7 +29,7 @@
 - `mellow-matugen` 与 `mellow-matugen-dark` 两套完整主题。
 - Matugen `primary` 驱动圆角高亮背景，`on_primary` 驱动高亮文字。
 - 保留 Mellow WeChat 的面板、阴影、边距与竖直候选列表布局。
-- 使用 compositor 原生背景模糊；复用上游的圆角 `panel.svg` 与 `blur-mask.svg`。
+- 使用 compositor 原生背景模糊；Hyprland 已实测，其他 compositor 的支持状态见兼容性说明。
 - 同时支持 Nix flake 和普通 Linux 手动安装。
 - 不绑定 Darkman、Waypaper 或特定桌面 shell；任何能调用 Matugen 的主题管理方案都能接入。
 
@@ -140,6 +142,8 @@ programs.fcitx5-matugen = {
 };
 ```
 
+也可以直接参考 [`examples/home-manager.nix`](examples/home-manager.nix)。
+
 模块会安装对应的主题包，并把选中的 Matugen 模板链接到：
 
 ```text
@@ -195,7 +199,7 @@ https://github.com/Shangshui0302/fcitx5-mellow-themes-matugen
    UseDarkTheme=True
    Vertical Candidate List=True
 6. 修改前备份已有配置；不要删除其他主题。NixOS 配置只修改仓库中的 Nix 文件，展示 diff 后等待用户自己执行 rebuild/switch。
-7. 配置完成后运行一次 Matugen，重启或 reload Fcitx5，并分别验证原生 Wayland ClassicUI 和 GTK 内嵌候选窗：前者检查 compositor 模糊，后者检查圆角、图片高亮、重点色和竖直排列。
+7. 配置完成后运行一次 Matugen，重启或 reload Fcitx5，并在当前 compositor 上验证原生 Wayland ClassicUI 和 GTK 内嵌候选窗。Hyprland 是本项目已实测的 compositor；niri、KWin、GNOME/Mutter 仅记录理论支持，不要将其描述为已验证。
 8. 最后报告：安装方式、写入的文件、模式切换命令、壁纸切换命令、验证结果，以及任何需要用户手动执行的命令。
 ```
 
@@ -251,7 +255,7 @@ Darkman 用户可以在明暗模式 hook 中完成三件事：运行 Matugen、�
 
 ### 启用 compositor 原生模糊
 
-主题中的 `EnableBlur=True` 会让 Fcitx5 请求 Wayland 的背景模糊协议。需要 Fcitx5 5.1.20 或更新版本；旧版仍能加载主题，但不能向 niri 请求原生模糊。
+主题中的 `EnableBlur=True` 会让 Fcitx5 请求 Wayland 的背景模糊协议。需要 Fcitx5 5.1.20 或更新版本；旧版仍能加载主题，但不能请求 compositor 原生模糊。
 
 Hyprland 需要在 `decoration:blur` 中打开输入法模糊：
 
@@ -265,7 +269,7 @@ decoration {
 }
 ```
 
-niri 只需启用全局模糊参数；不要用普通 `popups` 规则匹配 Fcitx5 输入法窗口：
+niri 理论上只需启用全局模糊参数；本项目未实测，不要用普通 `popups` 规则匹配 Fcitx5 输入法窗口：
 
 ```kdl
 blur {
@@ -276,13 +280,15 @@ blur {
 }
 ```
 
-KWin 需要启用桌面效果中的模糊。GNOME/Mutter 只有支持 `ext-background-effect` 的版本会提供 compositor 原生模糊，不支持时会平滑退化为普通主题。
+KWin 理论上需要启用桌面效果中的模糊。GNOME/Mutter 理论上只有支持 `ext-background-effect` 的版本会提供 compositor 原生模糊，不支持时会平滑退化为普通主题；本项目均未实测。
+
+当前验证状态：Hyprland 原生模糊已在本项目环境中验证。niri、KWin、GNOME/Mutter 尚未在本项目中实测，仅属于协议层面的理论支持；如果你完成了验证，欢迎提交 issue 或 PR，附上 Fcitx5、compositor 版本和截图。
 
 ## 兼容性与限制
 
 - 需要 Fcitx5 ClassicUI 和 Matugen。
 - 深浅模式管理、壁纸选择和 Fcitx5 重启由用户现有方案负责。
-- Wayland 原生模糊依赖 compositor 对背景模糊协议的支持；Hyprland 需要 `input_methods=true`，niri 需要启用全局 `blur`。
+- Wayland 原生模糊依赖 compositor 对背景模糊协议的支持；Hyprland 需要 `input_methods=true`，且已在本项目中验证。niri、KWin、GNOME/Mutter 目前未实测，仅作理论支持。
 - `fcitx5-gtk` 的 GTK3/GTK4 候选窗仍使用主题颜色和布局，但不能保证 compositor backdrop blur。
 - GNOME 的 Kimpanel、KDE Input Method Panel 等外部面板会自行绘制候选窗，不使用 ClassicUI 主题。
 - Flatpak GTK 应用还需要能够读取用户主题目录或宿主 profile；沙箱权限不在本项目内管理。
