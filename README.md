@@ -9,7 +9,7 @@
 [fcitx5-mellow-themes](https://github.com/sanweiya/fcitx5-mellow-themes)
 中 Mellow WeChat 的圆角候选窗，同时让高亮背景和文字随壁纸生成的 Material You 配色变化。
 
-项目提供浅色与深色两套完整主题，适用于普通 ClassicUI 候选窗以及 fcitx5-gtk 绘制的 GTK 内嵌候选窗。
+项目提供浅色与深色两套完整主题，适用于普通 ClassicUI 候选窗以及 fcitx5-gtk 绘制的 GTK 内嵌候选窗。原生 Wayland 候选窗会在 compositor 支持时请求其原生模糊；不支持时仍正常显示主题。
 
 ## 效果展示
 
@@ -27,6 +27,7 @@
 - `mellow-matugen` 与 `mellow-matugen-dark` 两套完整主题。
 - Matugen `primary` 驱动圆角高亮背景，`on_primary` 驱动高亮文字。
 - 保留 Mellow WeChat 的面板、阴影、边距与竖直候选列表布局。
+- 使用 compositor 原生背景模糊；复用上游的圆角 `panel.svg` 与 `blur-mask.svg`。
 - 同时支持 Nix flake 和普通 Linux 手动安装。
 - 不绑定 Darkman、Waypaper 或特定桌面 shell；任何能调用 Matugen 的主题管理方案都能接入。
 
@@ -35,19 +36,89 @@
 Fcitx5 的图片型高亮不会被普通颜色字段覆盖，因此本项目同时生成：
 
 - `highlight.svg`：使用 Matugen `primary`。
+- `blur-mask.svg`：限定 compositor 模糊区域，保留圆角边缘。
 - 完整 `theme.conf`：保留布局和图片引用，并将高亮文字设为 `on_primary`。
 
 完整配置很重要：fcitx5-gtk 只加载 XDG 搜索顺序中的第一份 `theme.conf`，不会把用户目录中的颜色片段与系统主题合并。
 
 ## 安装
 
+安装组合由两个选项决定：
+
+- `themeSet`：`both`、`light` 或 `dark`；
+- `style`：`blur`（当前 alpha `0.25`，请求 compositor 原生模糊）或 `solid`（不透明纯色，不请求模糊）。
+
+默认组合是 `both-blur`。
+
+### 普通 Linux：手动复制
+
+普通用户不需要安装脚本，直接复制所需主题目录和 Matugen 模板即可。先在仓库根目录执行：
+
+```bash
+install -d ~/.local/share/fcitx5/themes \
+  ~/.config/matugen/templates/fcitx5-matugen-theme
+```
+
+安装两种明暗模式的模糊主题：
+
+```bash
+cp -a themes/mellow-matugen themes/mellow-matugen-dark \
+  ~/.local/share/fcitx5/themes/
+cp -a templates/mellow-matugen templates/mellow-matugen-dark \
+  ~/.config/matugen/templates/fcitx5-matugen-theme/
+```
+
+仅浅色或仅深色时，只复制对应目录：
+
+```bash
+# 仅浅色
+cp -a themes/mellow-matugen ~/.local/share/fcitx5/themes/
+cp -a templates/mellow-matugen ~/.config/matugen/templates/fcitx5-matugen-theme/
+
+# 仅深色
+cp -a themes/mellow-matugen-dark ~/.local/share/fcitx5/themes/
+cp -a templates/mellow-matugen-dark ~/.config/matugen/templates/fcitx5-matugen-theme/
+```
+
+纯色版本可以在复制后对已选择的目录执行：
+
+```bash
+for d in ~/.local/share/fcitx5/themes/mellow-matugen*; do
+  [ -d "$d" ] || continue
+  sed -i \
+    -e 's/^EnableBlur=True$/EnableBlur=False/' \
+    -e 's/^BlurMask=blur-mask.svg$/BlurMask=/' \
+    "$d/theme.conf"
+  sed -i 's/fill-opacity:0.25/fill-opacity:1/g' "$d/panel.svg"
+done
+for f in ~/.config/matugen/templates/fcitx5-matugen-theme/mellow-matugen*/theme.conf.tpl; do
+  [ -f "$f" ] || continue
+  sed -i \
+    -e 's/^EnableBlur=True$/EnableBlur=False/' \
+    -e 's/^BlurMask=blur-mask.svg$/BlurMask=/' \
+    "$f"
+done
+```
+
 ### Nix flake
 
-直接安装到用户 profile：
+直接安装默认的双模式模糊主题：
 
 ```bash
 nix profile install github:Shangshui0302/fcitx5-mellow-themes-matugen
 ```
+
+也可以选择单一模式或纯色变体：
+
+```bash
+nix profile install github:Shangshui0302/fcitx5-mellow-themes-matugen#light-blur
+nix profile install github:Shangshui0302/fcitx5-mellow-themes-matugen#dark-blur
+nix profile install github:Shangshui0302/fcitx5-mellow-themes-matugen#both-solid
+nix profile install github:Shangshui0302/fcitx5-mellow-themes-matugen#light-solid
+nix profile install github:Shangshui0302/fcitx5-mellow-themes-matugen#dark-solid
+```
+
+### Home Manager 模块
 
 作为 flake input 接入 Home Manager：
 
@@ -58,11 +129,42 @@ inputs.fcitx5-matugen-theme = {
   inputs.nixpkgs.follows = "nixpkgs";
 };
 
-# Home Manager 模块
-home.packages = [
-  inputs.fcitx5-matugen-theme.packages.${pkgs.stdenv.hostPlatform.system}.default
-];
+# home.nix
+imports = [ inputs.fcitx5-matugen-theme.homeManagerModules.default ];
+
+programs.fcitx5-matugen = {
+  enable = true;
+  themeSet = "both"; # "light"、"dark" 或 "both"
+  style = "blur";    # "solid" 或 "blur"
+  installMatugenTemplates = true;
+};
 ```
+
+模块会安装对应的主题包，并把选中的 Matugen 模板链接到：
+
+```text
+~/.config/matugen/templates/fcitx5-matugen-theme/
+```
+
+模块不会覆盖 `~/.config/fcitx5/conf/classicui.conf`，仍需保留或手动设置：
+
+```ini
+Theme=mellow-matugen
+DarkTheme=mellow-matugen-dark
+UseDarkTheme=True
+Vertical Candidate List=True
+```
+
+若选择 `themeSet = "light"` 或 `"dark"`，请同步调整 `Theme`/`DarkTheme`，避免 Fcitx5 指向未安装的主题。
+
+主题包的公开变体为：
+
+```text
+both-blur（default）  light-blur  dark-blur
+both-solid            light-solid dark-solid
+```
+
+现有的手动 Matugen 配置也可以继续使用；不要让 HM 模块和其他模块同时写同一份 `theme.conf`。
 
 主题位于 profile 的 `share/fcitx5/themes/`，模板位于：
 
@@ -70,16 +172,7 @@ home.packages = [
 ~/.nix-profile/share/matugen/fcitx5-matugen-theme/
 ```
 
-### 通用 Linux
-
-```bash
-git clone https://github.com/Shangshui0302/fcitx5-mellow-themes-matugen
-cd fcitx5-mellow-themes-matugen
-
-install -d ~/.local/share/fcitx5/themes ~/.config/matugen/templates/fcitx5-matugen-theme
-cp -r themes/mellow-matugen themes/mellow-matugen-dark ~/.local/share/fcitx5/themes/
-cp -r templates/. ~/.config/matugen/templates/fcitx5-matugen-theme/
-```
+如果不启用 `installMatugenTemplates`，可以直接引用这个 profile 路径。
 
 ## 给通用 Agent 的安装提示词
 
@@ -92,17 +185,17 @@ https://github.com/Shangshui0302/fcitx5-mellow-themes-matugen
 目标：让 Fcitx5 ClassicUI 候选窗和 fcitx5-gtk GTK 内嵌候选窗都使用 Mellow WeChat 风格，并让 Matugen 的 primary/on_primary 跟随壁纸更新重点背景色和文字色；保留竖直候选列表。
 
 请按以下顺序工作：
-1. 先检查发行版、是否为 NixOS、Fcitx5/Fcitx5-gtk、Matugen、当前 ClassicUI 配置、已有深浅模式管理器和 XDG data 路径。
-2. NixOS 优先使用 Nix flake/package；其他 Linux 使用仓库中的 themes 和 templates 安装到用户目录。不要使用 npm、pip 或 curl|sh。
-3. 安装两套完整主题：mellow-matugen 与 mellow-matugen-dark。不要生成只有颜色字段的稀疏 theme.conf；GTK 内嵌候选窗需要完整的 Metadata、Background、Highlight、图片引用和边距。
-4. 将四个 Matugen 模板接入现有 Matugen 配置：浅色/深色 theme.conf 和 highlight.svg 分别写入对应用户主题目录。不要假设用户使用 Darkman、Noctalia 或 Waypaper；先复用现有模式和壁纸管理器。
+1. 先检查发行版、是否为 NixOS、Fcitx5/Fcitx5-gtk、Matugen、当前 ClassicUI 配置、Wayland compositor、已有深浅模式管理器和 XDG data 路径。
+2. 先询问或识别需要 `both`、`light` 或 `dark`，以及 `blur` 或 `solid`；NixOS 优先使用 Flake/HM 模块，其他 Linux 使用仓库中的 themes 和 templates 手动复制。不要使用 npm、pip 或 curl|sh。
+3. 安装所选的完整主题目录。不要生成只有颜色字段的稀疏 theme.conf；GTK 内嵌候选窗需要完整的 Metadata、Background、Highlight、图片引用和边距。
+4. 只将所选主题的 Matugen 模板接入现有配置：theme.conf 和 highlight.svg 分别写入对应用户主题目录。不要假设用户使用 Darkman、Noctalia 或 Waypaper；先复用现有模式和壁纸管理器。
 5. 保留或合并现有 ~/.config/fcitx5/conf/classicui.conf 中无关设置，只确保以下键最终正确：
    Theme=mellow-matugen 或 mellow-matugen-dark（按当前模式）
    DarkTheme=mellow-matugen-dark
    UseDarkTheme=True
    Vertical Candidate List=True
 6. 修改前备份已有配置；不要删除其他主题。NixOS 配置只修改仓库中的 Nix 文件，展示 diff 后等待用户自己执行 rebuild/switch。
-7. 配置完成后运行一次 Matugen，重启或 reload Fcitx5，并验证普通 ClassicUI 和 GTK 内嵌候选窗都保留圆角、图片高亮、重点色和竖直排列。
+7. 配置完成后运行一次 Matugen，重启或 reload Fcitx5，并分别验证原生 Wayland ClassicUI 和 GTK 内嵌候选窗：前者检查 compositor 模糊，后者检查圆角、图片高亮、重点色和竖直排列。
 8. 最后报告：安装方式、写入的文件、模式切换命令、壁纸切换命令、验证结果，以及任何需要用户手动执行的命令。
 ```
 
@@ -156,10 +249,41 @@ systemctl --user restart app-org.fcitx.Fcitx5@autostart.service \
 
 Darkman 用户可以在明暗模式 hook 中完成三件事：运行 Matugen、写入当前 `Theme`、重启 Fcitx5。本项目不保存全局深浅模式状态。
 
+### 启用 compositor 原生模糊
+
+主题中的 `EnableBlur=True` 会让 Fcitx5 请求 Wayland 的背景模糊协议。需要 Fcitx5 5.1.20 或更新版本；旧版仍能加载主题，但不能向 niri 请求原生模糊。
+
+Hyprland 需要在 `decoration:blur` 中打开输入法模糊：
+
+```ini
+decoration {
+  blur {
+    enabled = true
+    input_methods = true
+    new_optimizations = true
+  }
+}
+```
+
+niri 只需启用全局模糊参数；不要用普通 `popups` 规则匹配 Fcitx5 输入法窗口：
+
+```kdl
+blur {
+    passes 3
+    offset 3
+    noise 0.02
+    saturation 1.5
+}
+```
+
+KWin 需要启用桌面效果中的模糊。GNOME/Mutter 只有支持 `ext-background-effect` 的版本会提供 compositor 原生模糊，不支持时会平滑退化为普通主题。
+
 ## 兼容性与限制
 
 - 需要 Fcitx5 ClassicUI 和 Matugen。
 - 深浅模式管理、壁纸选择和 Fcitx5 重启由用户现有方案负责。
+- Wayland 原生模糊依赖 compositor 对背景模糊协议的支持；Hyprland 需要 `input_methods=true`，niri 需要启用全局 `blur`。
+- `fcitx5-gtk` 的 GTK3/GTK4 候选窗仍使用主题颜色和布局，但不能保证 compositor backdrop blur。
 - GNOME 的 Kimpanel、KDE Input Method Panel 等外部面板会自行绘制候选窗，不使用 ClassicUI 主题。
 - Flatpak GTK 应用还需要能够读取用户主题目录或宿主 profile；沙箱权限不在本项目内管理。
 

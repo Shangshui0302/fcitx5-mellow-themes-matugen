@@ -7,8 +7,8 @@ Description="Aesthetic, modern fcitx5 theme featuring rounded rectangle design."
 [InputPanel]
 NormalColor=#bcbcbc
 HighlightCandidateColor={{colors.on_primary.dark.hex}}
-EnableBlur=False
-BlurMask=
+EnableBlur=True
+BlurMask=blur-mask.svg
 FullWidthHighlight=True
 HighlightColor={{colors.on_primary.dark.hex}}
 HighlightBackgroundColor={{colors.primary.dark.hex}}

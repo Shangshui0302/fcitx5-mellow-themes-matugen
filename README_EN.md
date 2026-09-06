@@ -7,7 +7,7 @@
 
 Matugen-powered accent themes for Fcitx5 ClassicUI. The project keeps the rounded Mellow WeChat candidate window from [fcitx5-mellow-themes](https://github.com/sanweiya/fcitx5-mellow-themes), while deriving its highlight background and text colors from a Material You wallpaper palette.
 
-Both light and dark variants are complete themes and work with ordinary ClassicUI candidate windows as well as GTK-embedded candidate windows rendered by fcitx5-gtk.
+Both light and dark variants are complete themes and work with ordinary ClassicUI candidate windows as well as GTK-embedded candidate windows rendered by fcitx5-gtk. Native Wayland candidate windows request compositor-rendered blur when available and still work as normal themes when it is not.
 
 ## Preview
 
@@ -25,6 +25,7 @@ Four wallpapers are shown in both light and dark modes, for eight Matugen palett
 - Complete `mellow-matugen` and `mellow-matugen-dark` themes.
 - Matugen `primary` for the rounded highlight and `on_primary` for highlighted text.
 - Original Mellow WeChat panel geometry, shadows and spacing.
+- Compositor-native background blur using the upstream rounded `panel.svg` and `blur-mask.svg`.
 - Nix flake and distribution-independent manual installation.
 - No dependency on Darkman, Waypaper or a particular desktop shell.
 
@@ -33,47 +34,143 @@ Four wallpapers are shown in both light and dark modes, for eight Matugen palett
 Image-backed Fcitx5 highlights are not replaced by ordinary color fields, so this project renders both:
 
 - `highlight.svg` from Matugen `primary`.
+- `blur-mask.svg` to limit the compositor blur region and preserve rounded edges.
 - A complete `theme.conf` with the original layout and `on_primary` text colors.
 
 The complete file matters because fcitx5-gtk loads the first `theme.conf` found in the XDG search path and does not merge a user color fragment with a system theme.
 
 ## Installation
 
+Installation is controlled by two choices:
+
+- `themeSet`: `both`, `light` or `dark`;
+- `style`: `blur` (current alpha `0.25`, requests compositor-native blur) or `solid` (opaque, no blur request).
+
+The default combination is `both-blur`.
+
+### Generic Linux: manual copy
+
+No installer is required. From the repository root, create the destination directories:
+
+```bash
+install -d ~/.local/share/fcitx5/themes \
+  ~/.config/matugen/templates/fcitx5-matugen-theme
+```
+
+Install both light and dark blur themes:
+
+```bash
+cp -a themes/mellow-matugen themes/mellow-matugen-dark \
+  ~/.local/share/fcitx5/themes/
+cp -a templates/mellow-matugen templates/mellow-matugen-dark \
+  ~/.config/matugen/templates/fcitx5-matugen-theme/
+```
+
+For only one mode, copy only the matching directory:
+
+```bash
+# Light only
+cp -a themes/mellow-matugen ~/.local/share/fcitx5/themes/
+cp -a templates/mellow-matugen ~/.config/matugen/templates/fcitx5-matugen-theme/
+
+# Dark only
+cp -a themes/mellow-matugen-dark ~/.local/share/fcitx5/themes/
+cp -a templates/mellow-matugen-dark ~/.config/matugen/templates/fcitx5-matugen-theme/
+```
+
+For a solid variant, run this after copying the selected directories:
+
+```bash
+for d in ~/.local/share/fcitx5/themes/mellow-matugen*; do
+  [ -d "$d" ] || continue
+  sed -i \
+    -e 's/^EnableBlur=True$/EnableBlur=False/' \
+    -e 's/^BlurMask=blur-mask.svg$/BlurMask=/' \
+    "$d/theme.conf"
+  sed -i 's/fill-opacity:0.25/fill-opacity:1/g' "$d/panel.svg"
+done
+for f in ~/.config/matugen/templates/fcitx5-matugen-theme/mellow-matugen*/theme.conf.tpl; do
+  [ -f "$f" ] || continue
+  sed -i \
+    -e 's/^EnableBlur=True$/EnableBlur=False/' \
+    -e 's/^BlurMask=blur-mask.svg$/BlurMask=/' \
+    "$f"
+done
+```
+
 ### Nix flake
+
+Install the default both-mode blur theme:
 
 ```bash
 nix profile install github:Shangshui0302/fcitx5-mellow-themes-matugen
 ```
 
+The single-mode and solid variants are also available:
+
+```bash
+nix profile install github:Shangshui0302/fcitx5-mellow-themes-matugen#light-blur
+nix profile install github:Shangshui0302/fcitx5-mellow-themes-matugen#dark-blur
+nix profile install github:Shangshui0302/fcitx5-mellow-themes-matugen#both-solid
+nix profile install github:Shangshui0302/fcitx5-mellow-themes-matugen#light-solid
+nix profile install github:Shangshui0302/fcitx5-mellow-themes-matugen#dark-solid
+```
+
+### Home Manager module
+
 As a Home Manager flake input:
 
 ```nix
+# flake.nix
 inputs.fcitx5-matugen-theme = {
   url = "github:Shangshui0302/fcitx5-mellow-themes-matugen";
   inputs.nixpkgs.follows = "nixpkgs";
 };
 
-home.packages = [
-  inputs.fcitx5-matugen-theme.packages.${pkgs.stdenv.hostPlatform.system}.default
-];
+# home.nix
+imports = [ inputs.fcitx5-matugen-theme.homeManagerModules.default ];
+
+programs.fcitx5-matugen = {
+  enable = true;
+  themeSet = "both"; # "light", "dark" or "both"
+  style = "blur";    # "solid" or "blur"
+  installMatugenTemplates = true;
+};
 ```
 
-The package installs themes under `share/fcitx5/themes/` and templates under:
+The module installs the selected package and links the selected Matugen templates under:
+
+```text
+~/.config/matugen/templates/fcitx5-matugen-theme/
+```
+
+The module does not overwrite `~/.config/fcitx5/conf/classicui.conf`; keep or set:
+
+```ini
+Theme=mellow-matugen
+DarkTheme=mellow-matugen-dark
+UseDarkTheme=True
+Vertical Candidate List=True
+```
+
+When using `themeSet = "light"` or `"dark"`, align `Theme`/`DarkTheme` so Fcitx5 does not point at an uninstalled theme.
+
+The public package variants are:
+
+```text
+both-blur (default)  light-blur  dark-blur
+both-solid           light-solid dark-solid
+```
+
+Existing manual Matugen wiring can continue to be used; do not let the HM module and another module write the same `theme.conf`.
+
+The package stores themes under `share/fcitx5/themes/` and templates under:
 
 ```text
 ~/.nix-profile/share/matugen/fcitx5-matugen-theme/
 ```
 
-### Generic Linux
-
-```bash
-git clone https://github.com/Shangshui0302/fcitx5-mellow-themes-matugen
-cd fcitx5-mellow-themes-matugen
-
-install -d ~/.local/share/fcitx5/themes ~/.config/matugen/templates/fcitx5-matugen-theme
-cp -r themes/mellow-matugen themes/mellow-matugen-dark ~/.local/share/fcitx5/themes/
-cp -r templates/. ~/.config/matugen/templates/fcitx5-matugen-theme/
-```
+If `installMatugenTemplates` is disabled, reference that profile path directly.
 
 ## Prompt for a General-Purpose Agent
 
@@ -86,17 +183,17 @@ https://github.com/Shangshui0302/fcitx5-mellow-themes-matugen
 Goal: make both Fcitx5 ClassicUI and fcitx5-gtk GTK-embedded candidate windows use the rounded Mellow WeChat style, while deriving highlight background/text colors from Matugen primary/on_primary colors. Keep the candidate list vertical.
 
 Work in this order:
-1. Inspect the distribution, whether it is NixOS, installed Fcitx5/Fcitx5-gtk and Matugen, the current ClassicUI config, existing light/dark mode manager, and XDG data paths.
-2. Prefer a Nix flake/package on NixOS. On other Linux systems install the repository's themes and templates for the user. Do not use npm, pip or curl|sh.
-3. Install both complete themes: mellow-matugen and mellow-matugen-dark. Do not create sparse theme.conf files containing only colors; GTK-embedded candidates need complete Metadata, Background, Highlight, image references and margins.
-4. Add the four Matugen templates to the existing Matugen configuration: light/dark theme.conf and highlight.svg outputs must go to their matching user theme directories. Do not assume Darkman, Noctalia or Waypaper; reuse the user's existing mode and wallpaper manager.
+1. Inspect the distribution, whether it is NixOS, installed Fcitx5/Fcitx5-gtk and Matugen, the current ClassicUI config, the Wayland compositor, existing light/dark mode manager, and XDG data paths.
+2. First identify whether the user wants `both`, `light` or `dark`, and `blur` or `solid`; prefer the Flake/HM module on NixOS, and manual theme/template copying on other Linux systems. Do not use npm, pip or curl|sh.
+3. Install only the selected complete theme directories. Do not create sparse theme.conf files containing only colors; GTK-embedded candidates need complete Metadata, Background, Highlight, image references and margins.
+4. Add only the selected Matugen templates to the existing configuration: theme.conf and highlight.svg outputs must go to their matching user theme directories. Do not assume Darkman, Noctalia or Waypaper; reuse the user's existing mode and wallpaper manager.
 5. Preserve unrelated settings in ~/.config/fcitx5/conf/classicui.conf, but ensure these keys are correct:
    Theme=mellow-matugen or mellow-matugen-dark (according to the current mode)
    DarkTheme=mellow-matugen-dark
    UseDarkTheme=True
    Vertical Candidate List=True
 6. Back up existing configuration before editing and do not delete other themes. On NixOS, only edit Nix files in the configuration repository, show the diff, and let the user run rebuild/switch themselves.
-7. Run Matugen once after configuration, restart or reload Fcitx5, and verify ordinary ClassicUI and GTK-embedded candidates keep the rounded layout, image highlight, generated accent color and vertical arrangement.
+7. Run Matugen once after configuration, restart or reload Fcitx5, and verify native Wayland ClassicUI and GTK-embedded candidates separately: check compositor blur for the former, and rounded layout, image highlight, generated accent color and vertical arrangement for the latter.
 8. Report the installation method, files written, mode-switch command, wallpaper-switch command, verification result, and any command the user must run manually.
 ```
 
@@ -150,10 +247,41 @@ systemctl --user restart app-org.fcitx.Fcitx5@autostart.service \
 
 A Darkman hook typically renders Matugen, updates the current `Theme`, and restarts Fcitx5. This repository deliberately does not own the global light/dark state.
 
+### Enabling compositor-native blur
+
+The themes set `EnableBlur=True`, which asks Fcitx5 to request Wayland background blur. Use Fcitx5 5.1.20 or newer; older versions still load the theme but cannot request native blur from niri.
+
+Hyprland must enable input-method blur under `decoration:blur`:
+
+```ini
+decoration {
+  blur {
+    enabled = true
+    input_methods = true
+    new_optimizations = true
+  }
+}
+```
+
+niri only needs global blur enabled; do not try to match Fcitx5 with an ordinary `popups` rule:
+
+```kdl
+blur {
+    passes 3
+    offset 3
+    noise 0.02
+    saturation 1.5
+}
+```
+
+KWin needs its desktop Blur effect enabled. GNOME/Mutter provides compositor-native blur only in versions that support `ext-background-effect`; unsupported versions gracefully fall back to the regular theme.
+
 ## Compatibility and limitations
 
 - Requires Fcitx5 ClassicUI and Matugen.
 - Your existing tooling remains responsible for mode state, wallpaper selection and reloads.
+- Wayland-native blur depends on compositor support; Hyprland needs `input_methods=true`, and niri needs global `blur` enabled.
+- `fcitx5-gtk` GTK3/GTK4 candidate windows keep the theme colors and layout, but compositor backdrop blur is not guaranteed.
 - GNOME Kimpanel, KDE Input Method Panel and similar external panels draw their own candidate window and do not use ClassicUI themes.
 - Flatpak GTK applications must be able to read the user theme directory or host profile; sandbox permissions are outside this project.
 
