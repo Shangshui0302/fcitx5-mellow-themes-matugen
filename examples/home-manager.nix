@@ -9,6 +9,5 @@
     enable = true;
     themeSet = "both";
     style = "blur";
-    installMatugenTemplates = true;
   };
 }

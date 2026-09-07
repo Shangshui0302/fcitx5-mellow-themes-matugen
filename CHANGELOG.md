@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased
+
+- The Home Manager module now creates writable user copies under the XDG data directory for Matugen's runtime `theme.conf` and `highlight.svg` updates.
+- Existing read-only manual copies are migrated without replacing generated colors; changing the selected theme variant refreshes managed assets.
+- Simplified the Home Manager example and documented the runtime-directory ownership boundary.
+
 ## 0.2.0 - 2026-09-06
 
 - Added compositor-native blur themes with a rounded `blur-mask.svg`.

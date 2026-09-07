@@ -29,6 +29,7 @@ Four wallpapers are shown in both light and dark modes, for eight Matugen palett
 - Original Mellow WeChat panel geometry, shadows and spacing.
 - Compositor-native background blur, verified on Hyprland; support status for other compositors is documented below.
 - Nix flake and distribution-independent manual installation.
+- The Home Manager module creates writable user theme copies by default, so Matugen can atomically update its color files.
 - No dependency on Darkman, Waypaper or a particular desktop shell.
 
 ## How it works
@@ -50,6 +51,10 @@ Installation is controlled by two choices:
 
 The default combination is `both-blur`.
 
+With Home Manager, the module also copies the selected complete themes to
+`${XDG_DATA_HOME:-$HOME/.local/share}/fcitx5/themes/` by default. This user-owned directory is writable and is
+where Matugen updates `theme.conf` and `highlight.svg`; the Nix profile package remains immutable.
+
 ### Generic Linux: manual copy
 
 No installer is required. From the repository root, create the destination directories:
@@ -66,6 +71,15 @@ cp -a themes/mellow-matugen themes/mellow-matugen-dark \
   ~/.local/share/fcitx5/themes/
 cp -a templates/mellow-matugen templates/mellow-matugen-dark \
   ~/.config/matugen/templates/fcitx5-matugen-theme/
+```
+
+Matugen creates temporary files in the theme directories, so the runtime copies must be owned by the
+current user and writable:
+
+```bash
+for d in ~/.local/share/fcitx5/themes/mellow-matugen*; do
+  [ -d "$d" ] && chmod -R u+rwX "$d"
+done
 ```
 
 For only one mode, copy only the matching directory:
@@ -136,7 +150,6 @@ programs.fcitx5-matugen = {
   enable = true;
   themeSet = "both"; # "light", "dark" or "both"
   style = "blur";    # "solid" or "blur"
-  installMatugenTemplates = true;
 };
 ```
 
@@ -146,6 +159,21 @@ The module installs the selected package and links the selected Matugen template
 
 ```text
 ~/.config/matugen/templates/fcitx5-matugen-theme/
+```
+
+It also creates writable user copies of the selected themes under:
+
+```text
+${XDG_DATA_HOME:-$HOME/.local/share}/fcitx5/themes/mellow-matugen*/
+```
+
+On first activation, existing read-only directories are migrated. For the same theme variant, existing
+Matugen-generated `theme.conf` and `highlight.svg` files are preserved. Changing `themeSet` or `style`
+refreshes the files managed by this project. To keep the profile-only behavior and manage the user
+directory yourself, set:
+
+```nix
+programs.fcitx5-matugen.installRuntimeThemes = false;
 ```
 
 The module does not overwrite `~/.config/fcitx5/conf/classicui.conf`; keep or set:
@@ -168,13 +196,16 @@ both-solid           light-solid dark-solid
 
 Existing manual Matugen wiring can continue to be used; do not let the HM module and another module write the same `theme.conf`.
 
-The package stores themes under `share/fcitx5/themes/` and templates under:
+The package still stores themes under `share/fcitx5/themes/` and templates under:
 
 ```text
 ~/.nix-profile/share/matugen/fcitx5-matugen-theme/
 ```
 
 If `installMatugenTemplates` is disabled, reference that profile path directly.
+
+Do not symlink the runtime theme directory directly to a Nix profile: Matugen needs to create temporary
+files there and atomically replace its outputs.
 
 ## Prompt for a General-Purpose Agent
 

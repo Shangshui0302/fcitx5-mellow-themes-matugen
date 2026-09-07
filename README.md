@@ -31,6 +31,7 @@
 - 保留 Mellow WeChat 的面板、阴影、边距与竖直候选列表布局。
 - 使用 compositor 原生背景模糊；Hyprland 已实测，其他 compositor 的支持状态见兼容性说明。
 - 同时支持 Nix flake 和普通 Linux 手动安装。
+- Home Manager 默认创建可写的用户主题副本，Matugen 可以直接原子更新颜色文件。
 - 不绑定 Darkman、Waypaper 或特定桌面 shell；任何能调用 Matugen 的主题管理方案都能接入。
 
 ## 工作原理
@@ -52,6 +53,10 @@ Fcitx5 的图片型高亮不会被普通颜色字段覆盖，因此本项目同�
 
 默认组合是 `both-blur`。
 
+使用 Home Manager 时，模块还会默认把选中的完整主题复制到
+`${XDG_DATA_HOME:-$HOME/.local/share}/fcitx5/themes/`。该目录由用户拥有且可写，专门承载 Matugen
+生成的 `theme.conf` 和 `highlight.svg`；Nix profile 中的主题包仍保持不可变。
+
 ### 普通 Linux：手动复制
 
 普通用户不需要安装脚本，直接复制所需主题目录和 Matugen 模板即可。先在仓库根目录执行：
@@ -68,6 +73,14 @@ cp -a themes/mellow-matugen themes/mellow-matugen-dark \
   ~/.local/share/fcitx5/themes/
 cp -a templates/mellow-matugen templates/mellow-matugen-dark \
   ~/.config/matugen/templates/fcitx5-matugen-theme/
+```
+
+Matugen 会在主题目录中创建临时文件，因此运行时目录必须由当前用户拥有且可写：
+
+```bash
+for d in ~/.local/share/fcitx5/themes/mellow-matugen*; do
+  [ -d "$d" ] && chmod -R u+rwX "$d"
+done
 ```
 
 仅浅色或仅深色时，只复制对应目录：
@@ -138,16 +151,29 @@ programs.fcitx5-matugen = {
   enable = true;
   themeSet = "both"; # "light"、"dark" 或 "both"
   style = "blur";    # "solid" 或 "blur"
-  installMatugenTemplates = true;
 };
 ```
 
 也可以直接参考 [`examples/home-manager.nix`](examples/home-manager.nix)。
 
-模块会安装对应的主题包，并把选中的 Matugen 模板链接到：
+模块会安装对应的主题包，把选中的 Matugen 模板链接到：
 
 ```text
 ~/.config/matugen/templates/fcitx5-matugen-theme/
+```
+
+同时，模块默认创建可写的用户主题副本：
+
+```text
+${XDG_DATA_HOME:-$HOME/.local/share}/fcitx5/themes/mellow-matugen*/
+```
+
+首次激活会迁移已有的只读目录；同一主题变体下不会覆盖 Matugen 已生成的
+`theme.conf`/`highlight.svg`。切换 `themeSet` 或 `style` 时，模块会刷新本项目管理的主题文件。
+如果只想把主题包放进 profile、继续自行管理用户目录，可设置：
+
+```nix
+programs.fcitx5-matugen.installRuntimeThemes = false;
 ```
 
 模块不会覆盖 `~/.config/fcitx5/conf/classicui.conf`，仍需保留或手动设置：
@@ -170,13 +196,15 @@ both-solid            light-solid dark-solid
 
 现有的手动 Matugen 配置也可以继续使用；不要让 HM 模块和其他模块同时写同一份 `theme.conf`。
 
-主题位于 profile 的 `share/fcitx5/themes/`，模板位于：
+主题包仍位于 profile 的 `share/fcitx5/themes/`，模板位于：
 
 ```text
 ~/.nix-profile/share/matugen/fcitx5-matugen-theme/
 ```
 
 如果不启用 `installMatugenTemplates`，可以直接引用这个 profile 路径。
+
+不要把运行时主题目录直接软链接到 Nix profile；Matugen 需要能够在其中创建临时文件并原子替换输出。
 
 ## 给通用 Agent 的安装提示词
 
