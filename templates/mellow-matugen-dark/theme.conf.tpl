@@ -31,10 +31,10 @@ OverlayOffsetY=0
 HideOverlayIfOversize=False
 
 [InputPanel/Background/Margin]
-Left=15
-Right=15
-Top=15
-Bottom=15
+Left=14
+Right=14
+Top=14
+Bottom=14
 
 [InputPanel/Background/OverlayClipMargin]
 Left=0
@@ -54,8 +54,8 @@ OverlayOffsetY=0
 HideOverlayIfOversize=False
 
 [InputPanel/Highlight/Margin]
-Left=15
-Right=15
+Left=14
+Right=14
 Top=10
 Bottom=10
 
