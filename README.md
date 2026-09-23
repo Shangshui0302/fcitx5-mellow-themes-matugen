@@ -17,8 +17,8 @@
 
 四张壁纸分别展示浅色与深色模式，共八种 Matugen 配色：
 
-| 壁纸 | 浅色模式 | 深色模式 |
-|---|---|---|
+| 壁纸   | 浅色模式                                      | 深色模式                                     |
+| ------ | --------------------------------------------- | -------------------------------------------- |
 | 壁纸 1 | ![壁纸 1 浅色](preview/wallpaper-1-light.png) | ![壁纸 1 深色](preview/wallpaper-1-dark.png) |
 | 壁纸 2 | ![壁纸 2 浅色](preview/wallpaper-2-light.png) | ![壁纸 2 深色](preview/wallpaper-2-dark.png) |
 | 壁纸 3 | ![壁纸 3 浅色](preview/wallpaper-3-light.png) | ![壁纸 3 深色](preview/wallpaper-3-dark.png) |
@@ -168,8 +168,7 @@ programs.fcitx5-matugen = {
 ${XDG_DATA_HOME:-$HOME/.local/share}/fcitx5/themes/mellow-matugen*/
 ```
 
-首次激活会迁移已有的只读目录；同一主题变体下不会覆盖 Matugen 已生成的
-`theme.conf`/`highlight.svg`。切换 `themeSet` 或 `style` 时，模块会刷新本项目管理的主题文件。
+每次 Home Manager activation 都从当前 package 刷新 runtime theme，Matugen 可随后重新生成动态文件。切换 `themeSet` 或 `style` 时，模块会刷新本项目管理的主题文件。
 如果只想把主题包放进 profile、继续自行管理用户目录，可设置：
 
 ```nix
@@ -253,7 +252,7 @@ input_path = "/home/USER/.config/matugen/templates/fcitx5-matugen-theme/mellow-m
 output_path = "/home/USER/.local/share/fcitx5/themes/mellow-matugen-dark/highlight.svg"
 ```
 
-Nix 安装用户可以把 `input_path` 改为 profile 中对应的模板路径。之后正常运行 Matugen，例如：
+之后正常运行 Matugen，例如：
 
 ```bash
 matugen image /path/to/wallpaper.png -m dark -t scheme-content --prefer saturation
